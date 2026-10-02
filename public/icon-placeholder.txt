@@ -1,0 +1,6 @@
+Place PWA icons here:
+- icon-192.png (192x192)
+- icon-512.png (512x512)
+
+Generate from logo/brand asset. Use solid background, avoid transparency for maskable icons.
+Tool: https://realfavicongenerator.net or https://www.pwabuilder.com/imageGenerator
