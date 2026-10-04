@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '@/db/schema'
+import { getBusinessSettings } from '@/lib/business'
+import type { Settings } from '@/types'
 import { notify } from '@/components/NotificationContainer'
 import { Lock, Unlock } from 'lucide-react'
 
 export default function Login() {
   const navigate = useNavigate()
-  const settings = useLiveQuery(() => db.settings.get(1))
+  const [settings, setSettings] = useState<Settings | null>(null)
   const [pin, setPin] = useState('')
   const [error, setError] = useState(false)
+
+  // Supabase-first, local fallback (loads on mount)
+  useEffect(() => {
+    getBusinessSettings().then(setSettings).catch(() => setSettings(null))
+  }, [])
 
   const handleKeyPress = (digit: string) => {
     if (pin.length < 4) {

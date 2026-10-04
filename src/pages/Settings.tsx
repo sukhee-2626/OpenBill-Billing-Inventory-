@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/schema'
+import { saveBusinessSettings } from '@/lib/business'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -42,7 +43,7 @@ export default function Settings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await db.settings.put({
+    await saveBusinessSettings({
       ...formData,
       id: 1,
       updatedAt: new Date(),

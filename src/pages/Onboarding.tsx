@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { db } from '@/db/schema'
 import { notify } from '@/components/NotificationContainer'
+import { saveBusinessSettings } from '@/lib/business'
 import { Building2, Receipt, CreditCard, ArrowRight, Check, Sparkles, Upload } from 'lucide-react'
 import type { Settings } from '@/types'
 
@@ -77,7 +77,7 @@ export default function Onboarding() {
       updatedAt: new Date(),
     }
 
-    await db.settings.put(newSettings)
+    await saveBusinessSettings(newSettings)
     sessionStorage.setItem('openbill_unlocked', 'true')
     notify.success('Welcome to OpenBill!', `${businessName} is ready for billing`)
     navigate('/')
