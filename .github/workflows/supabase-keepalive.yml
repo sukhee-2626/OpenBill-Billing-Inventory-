@@ -1,0 +1,31 @@
+# Keeps the Supabase free project from pausing after 7 days of inactivity.
+# Pings Postgres (SELECT 1) every 4 days. Requires repo secret: SUPABASE_URL
+#   GitHub → Repository → Settings → Secrets and variables → Actions → New repository secret
+#   Name: SUPABASE_URL
+#   Value: postgresql://postgres:YOUR_PASSWORD@db.joisbmhiimoamdrglvwn.supabase.co:5432/postgres
+name: Supabase keep-alive
+
+on:
+  schedule:
+    # Every 4 days at 03:00 UTC — safely under Supabase's 7-day idle-pause window.
+    - cron: "0 3 */4 * *"
+  workflow_dispatch: {} # manual "Run workflow" button
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pg driver
+        run: npm install --no-save pg
+
+      - name: Ping database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: node scripts/supabase-keepalive.cjs

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Plus, Pencil, Trash2, AlertTriangle, Package } from 'lucide-react'
+import { Plus, Pencil, Trash2, AlertTriangle, Package, Tag } from 'lucide-react'
 import { db } from '@/db/schema'
 import { generateId } from '@/lib/utils'
 import { notify } from '@/components/NotificationContainer'
@@ -16,11 +16,13 @@ export default function Products() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [search, setSearch] = useState('')
+  const [filterCategory, setFilterCategory] = useState('all')
 
   // Form state
   const [name, setName] = useState('')
   const [sku, setSku] = useState('')
   const [barcode, setBarcode] = useState('')
+  const [category, setCategory] = useState('')
   const [sellingPrice, setSellingPrice] = useState('')
   const [purchasePrice, setPurchasePrice] = useState('')
   const [stock, setStock] = useState('')
@@ -69,6 +71,7 @@ export default function Products() {
       setName(product.name)
       setSku(product.sku || '')
       setBarcode(product.barcode || '')
+      setCategory(product.category || '')
       setSellingPrice(product.sellingPrice.toString())
       setPurchasePrice(product.purchasePrice?.toString() || '')
       setStock(product.stock.toString())
@@ -80,6 +83,7 @@ export default function Products() {
       setName('')
       setSku('')
       setBarcode('')
+      setCategory('')
       setSellingPrice('')
       setPurchasePrice('')
       setStock('')
@@ -101,6 +105,7 @@ export default function Products() {
       name,
       sku: sku || '',
       barcode: barcode || undefined,
+      category: category || undefined,
       sellingPrice: parseFloat(sellingPrice),
       purchasePrice: parseFloat(purchasePrice) || 0,
       stock: parseFloat(stock) || 0,
@@ -131,11 +136,15 @@ export default function Products() {
     }
   }
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.sku?.toLowerCase().includes(search.toLowerCase()) ||
-    p.barcode?.toLowerCase().includes(search.toLowerCase())
-  )
+  const categories = ['all', ...Array.from(new Set(products.map(p => p.category).filter(Boolean) as string[]))]
+
+  const filteredProducts = products.filter(p => {
+    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.sku?.toLowerCase().includes(search.toLowerCase()) ||
+      p.barcode?.toLowerCase().includes(search.toLowerCase())
+    const matchCat = filterCategory === 'all' || p.category === filterCategory
+    return matchSearch && matchCat
+  })
 
   return (
     <div className="p-6">
@@ -152,14 +161,26 @@ export default function Products() {
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="mb-6">
+      {/* Search + category filter */}
+      <div className="mb-4 flex flex-col sm:flex-row gap-3">
         <Input
           placeholder="Search products by name, SKU, or barcode..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-md"
         />
+      </div>
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
+        {categories.map(cat => (
+          <button key={cat} onClick={() => setFilterCategory(cat)}
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${filterCategory === cat ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+            <Tag size={11} />
+            {cat === 'all' ? 'All' : cat}
+            <span className={`px-1.5 rounded-full text-xs ${filterCategory === cat ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              {cat === 'all' ? products.length : products.filter(p => p.category === cat).length}
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* Products Grid */}
@@ -239,15 +260,27 @@ export default function Products() {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="name">Product Name *</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter product name"
-                className="mt-1"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="name">Product Name *</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter product name"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="category">Category</Label>
+                <Input
+                  id="category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  placeholder="e.g. Snacks, Drinks, Electronics"
+                  className="mt-1"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

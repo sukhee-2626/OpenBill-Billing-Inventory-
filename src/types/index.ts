@@ -142,6 +142,8 @@ export interface Template {
 export interface Settings {
   id: number
   businessName: string
+  businessType?: string
+  isOnboarded?: boolean
   businessLogo?: string
   signatureImage?: string
   stampImage?: string

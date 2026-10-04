@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/schema'
 import { notify } from '@/components/NotificationContainer'
 import jsPDF from 'jspdf'
@@ -421,6 +422,8 @@ export default function Invoices() {
   const sigRef = useRef<HTMLInputElement>(null)
   const previewRef = useRef<HTMLDivElement>(null)
 
+  const settings = useLiveQuery(() => db.settings.get(1))
+
   const { register, handleSubmit, control, watch, setValue, reset } = useForm<FormValues>({
     defaultValues: {
       sender: { name: '', address: '', zipCode: '', city: '', country: '', email: '', phone: '', customInputs: [] },
@@ -437,6 +440,21 @@ export default function Invoices() {
       items: [{ description: '', quantity: 1, rate: 0, taxRate: 0 }],
     },
   })
+
+  // Auto-fill company details from Settings on load
+  useEffect(() => {
+    if (!settings) return
+    const addr = settings.businessAddress
+    setValue('sender.name', settings.businessName || '')
+    setValue('sender.address', addr ? [addr.line1, addr.line2, addr.city, addr.state, addr.pincode].filter(Boolean).join(', ') : '')
+    setValue('sender.email', settings.email || '')
+    setValue('sender.phone', settings.phone || '')
+    setValue('sender.country', addr?.country || 'India')
+    setValue('details.currency', settings.currency || 'INR')
+    setValue('details.upiId', settings.upiId || '')
+    if (logoPreview === '' && settings.businessLogo) setLogoPreview(settings.businessLogo)
+    if (sigPreview === '' && settings.signatureImage) setSigPreview(settings.signatureImage)
+  }, [settings])
 
   const { fields: itemFields, append: appendItem, remove: removeItem } = useFieldArray({ control, name: 'items' })
   const { fields: senderCustom, append: appendSenderCustom, remove: removeSenderCustom } = useFieldArray({ control, name: 'sender.customInputs' })
