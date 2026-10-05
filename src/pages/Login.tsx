@@ -1,19 +1,21 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getBusinessSettings } from '@/lib/business'
+import { getBusinessSettings, saveBusinessSettings } from '@/lib/business'
 import type { Settings } from '@/types'
 import { notify } from '@/components/NotificationContainer'
-import { Lock, Unlock } from 'lucide-react'
+import { Lock, Unlock, Building2, Clock3, KeyRound } from 'lucide-react'
 
 export default function Login() {
   const navigate = useNavigate()
   const [settings, setSettings] = useState<Settings | null>(null)
   const [pin, setPin] = useState('')
   const [error, setError] = useState(false)
+  const [lastUnlock, setLastUnlock] = useState<string | null>(null)
 
   // Supabase-first, local fallback (loads on mount)
   useEffect(() => {
     getBusinessSettings().then(setSettings).catch(() => setSettings(null))
+    setLastUnlock(localStorage.getItem('openbill_last_unlock'))
   }, [])
 
   const handleKeyPress = (digit: string) => {
@@ -36,6 +38,7 @@ export default function Login() {
     const targetPin = settings?.pinHash || '1234'
     if (!settings?.enablePIN || inputPin === targetPin || inputPin === '0000' || inputPin === '1234') {
       sessionStorage.setItem('openbill_unlocked', 'true')
+      localStorage.setItem('openbill_last_unlock', new Date().toLocaleString())
       notify.success('Unlocked', `Welcome back, ${settings?.businessName || 'Admin'}`)
       navigate('/')
     } else {
@@ -47,8 +50,18 @@ export default function Login() {
     }
   }
 
+  const resetPin = async () => {
+    if (!confirm('Reset PIN? The PIN lock will be disabled until you set a new one in Onboarding.')) return
+    if (settings) {
+      await saveBusinessSettings({ ...settings, enablePIN: false, pinHash: undefined, updatedAt: new Date() })
+      notify.success('PIN Reset', 'PIN lock disabled — reopen onboarding to set a new one')
+      setPin('')
+    }
+  }
+
   const bypassLogin = () => {
     sessionStorage.setItem('openbill_unlocked', 'true')
+    localStorage.setItem('openbill_last_unlock', new Date().toLocaleString())
     notify.info('Direct Access', 'Unlocked system')
     navigate('/')
   }
@@ -85,7 +98,19 @@ export default function Login() {
         <h1 className="text-xl font-black text-gray-900 leading-tight">
           {settings?.businessName || 'OpenBill Terminal'}
         </h1>
-        <p className="text-xs text-gray-400 mt-1">Enter 4-digit PIN to access terminal</p>
+        <div className="flex items-center justify-center gap-2 mt-1.5 flex-wrap">
+          {settings?.businessType && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-[10px] font-bold">
+              <Building2 size={10} /> {settings.businessType}
+            </span>
+          )}
+          {lastUnlock && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[10px] font-semibold">
+              <Clock3 size={10} /> Last unlock: {lastUnlock}
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-gray-400 mt-2">Enter 4-digit PIN to access terminal</p>
 
         {/* PIN Dots indicator */}
         <div className={`flex justify-center gap-3 my-6 ${error ? 'animate-shake' : ''}`}>
@@ -144,6 +169,15 @@ export default function Login() {
           >
             Setup New Business Profile
           </button>
+          {settings?.enablePIN && (
+            <button
+              type="button"
+              onClick={resetPin}
+              className="w-full py-1.5 text-xs font-semibold text-red-400 hover:text-red-600 transition inline-flex items-center justify-center gap-1"
+            >
+              <KeyRound size={11} /> Forgot PIN? Reset lock
+            </button>
+          )}
         </div>
       </div>
     </div>

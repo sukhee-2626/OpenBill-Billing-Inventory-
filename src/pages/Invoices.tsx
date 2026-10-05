@@ -5,6 +5,7 @@ import { db } from '@/db/schema'
 import { notify } from '@/components/NotificationContainer'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+import { amountToWords } from '@/lib/currency'
 import {
   Plus, Trash2, Printer, Save, FileText, Eye, EyeOff,
   Download, Share2, Mail, Copy, CheckCircle,
@@ -52,13 +53,15 @@ const PAGE_SIZES: { id: PageSize; label: string; w: number; desc: string }[] = [
   { id: 'custom',    label: 'Custom',     w: 0,   desc: 'Set your own' },
 ]
 
-type TemplateName = 'classic' | 'modern' | 'minimal' | 'bold' | 'sidebar' | 'thermal'
+type TemplateName = 'classic' | 'modern' | 'minimal' | 'bold' | 'sidebar' | 'thermal' | 'elegant' | 'gstpro'
 const TEMPLATES: { id: TemplateName; label: string; desc: string }[] = [
   { id: 'classic',  label: 'Classic',   desc: 'Traditional header + table' },
   { id: 'modern',   label: 'Modern',    desc: 'Color header band, clean rows' },
   { id: 'minimal',  label: 'Minimal',   desc: 'Zero decoration, just data' },
   { id: 'bold',     label: 'Bold',      desc: 'Large typography, strong colors' },
   { id: 'sidebar',  label: 'Sidebar',   desc: 'Left color rail + content' },
+  { id: 'elegant',  label: 'Elegant',   desc: 'Luxe dark header, serif type' },
+  { id: 'gstpro',   label: 'GST Pro',   desc: 'Tax split + amount in words' },
   { id: 'thermal',  label: 'Thermal',   desc: 'Monospace receipt style' },
 ]
 
@@ -162,6 +165,144 @@ function InvoicePreview({ w, theme, currency, itemsTotal, discountAmt, taxAmt, s
         </div>
       </div>
       {sigPreview && <div style={{ marginTop:32, display:'flex', justifyContent:'flex-end' }}><div style={{ textAlign:'center' }}><img src={sigPreview} style={{ height:48, objectFit:'contain' }} /><div style={{ fontSize:10,color:'#999',borderTop:'1px solid #ccc',paddingTop:4,marginTop:4 }}>Authorised Signature</div></div></div>}
+    </div>
+  )
+
+  // ── Elegant (luxe dark header, serif, gold accent) ──
+  if (template === 'elegant') return (
+    <div style={{ fontFamily: 'Georgia, serif', background: '#fff', color: '#1a1a1a' }}>
+      <div style={{ background: '#0f172a', color: '#fff', padding: '42px 48px', borderBottom: `4px solid ${theme.accent}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            {logoPreview && <img src={logoPreview} style={{ height: 52, objectFit: 'contain', marginBottom: 14, filter: 'brightness(0) invert(1)' }} />}
+            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: 0.5 }}>{w.sender?.name}</div>
+            <div style={{ fontSize: 11, opacity: 0.75, lineHeight: 1.7, marginTop: 6 }}>{w.sender?.address}<br/>{w.sender?.email}{w.sender?.phone ? ` · ${w.sender.phone}` : ''}</div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 34, fontWeight: 400, letterSpacing: 6, color: theme.accent }}>INVOICE</div>
+            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6 }}>№ {w.details?.invoiceNumber}</div>
+            <div style={{ fontSize: 12, opacity: 0.8 }}>{w.details?.invoiceDate}{w.details?.dueDate ? ` · Due ${w.details.dueDate}` : ''}</div>
+          </div>
+        </div>
+      </div>
+      <div style={{ padding: '36px 48px' }}>
+        <div style={{ fontSize: 10, letterSpacing: 3, textTransform: 'uppercase', color: theme.accent, marginBottom: 6 }}>Billed To</div>
+        <div style={{ fontSize: 16, fontWeight: 700 }}>{w.receiver?.name}</div>
+        <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>{w.receiver?.address}{w.receiver?.email ? ` · ${w.receiver.email}` : ''}</div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 28, fontSize: 12 }}>
+          <thead><tr style={{ borderBottom: `2px solid ${theme.accent}` }}>
+            <th style={{ textAlign:'left', padding: 10, fontSize: 10, letterSpacing: 2, textTransform:'uppercase', color:'#666' }}>Item</th>
+            <th style={{ textAlign:'right', padding: 10, fontSize: 10, letterSpacing: 2, textTransform:'uppercase', color:'#666' }}>Qty</th>
+            <th style={{ textAlign:'right', padding: 10, fontSize: 10, letterSpacing: 2, textTransform:'uppercase', color:'#666' }}>Rate</th>
+            <th style={{ textAlign:'right', padding: 10, fontSize: 10, letterSpacing: 2, textTransform:'uppercase', color:'#666' }}>Amount</th>
+          </tr></thead>
+          <tbody>
+            {(w.items || []).map((it: any, i: number) => (
+              <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
+                <td style={{ padding: '10px' }}>{it.description || '—'}</td>
+                <td style={{ padding: '10px', textAlign: 'right', color: '#666' }}>{it.quantity}</td>
+                <td style={{ padding: '10px', textAlign: 'right', color: '#666' }}>{currency.symbol}{Number(it.rate).toFixed(2)}</td>
+                <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700 }}>{currency.symbol}{(Number(it.quantity)*Number(it.rate)).toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div style={{ display:'flex', justifyContent:'flex-end', marginTop: 28 }}>
+          <div style={{ minWidth: 240, border: `1px solid ${theme.accent}`, padding: '14px 18px' }}>
+            {discountAmt > 0 && <div style={{ display:'flex', justifyContent:'space-between', fontSize: 12, color:'#10b981' }}><em>Discount</em><span>-{currency.symbol}{discountAmt.toFixed(2)}</span></div>}
+            {taxAmt > 0 && <div style={{ display:'flex', justifyContent:'space-between', fontSize: 12, color:'#555' }}><em>Tax</em><span>+{currency.symbol}{taxAmt.toFixed(2)}</span></div>}
+            {shippingAmt > 0 && <div style={{ display:'flex', justifyContent:'space-between', fontSize: 12, color:'#555' }}><em>Shipping</em><span>+{currency.symbol}{shippingAmt.toFixed(2)}</span></div>}
+            <div style={{ display:'flex', justifyContent:'space-between', fontSize: 17, fontWeight: 700, marginTop: 8, borderTop:`1px solid ${theme.accent}`, paddingTop: 8, color: '#0f172a' }}>
+              <span>Total Due</span><span>{currency.symbol}{total.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+        {w.details?.upiId && <div style={{ fontSize: 11, color:'#666', marginTop: 16 }}>Pay via UPI: <b>{w.details.upiId}</b></div>}
+        {sigPreview && <div style={{ marginTop: 28, display:'flex', justifyContent:'flex-end' }}><div style={{ textAlign:'center' }}><img src={sigPreview} style={{ height: 44, objectFit:'contain' }} /><div style={{ fontSize: 9, color:'#999', letterSpacing: 2, marginTop: 4 }}>AUTHORISED SIGNATORY</div></div></div>}
+        <div style={{ textAlign:'center', fontSize: 10, color:'#999', marginTop: 32, letterSpacing: 3, fontStyle:'italic' }}>{w.details?.notes || 'Thank you for your business'}</div>
+      </div>
+    </div>
+  )
+
+  // ── GST Pro (Indian tax invoice: CGST/SGST split + amount in words) ──
+  if (template === 'gstpro') return (
+    <div style={{ fontFamily: 'system-ui', background: '#fff', color: '#111', padding: 0 }}>
+      <div style={{ background: `linear-gradient(90deg, ${theme.from}, ${theme.to})`, color: '#fff', padding: '22px 30px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+        <div style={{ display:'flex', alignItems:'center', gap: 14 }}>
+          {logoPreview && <img src={logoPreview} style={{ height: 44, objectFit:'contain' }} />}
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 900 }}>{w.sender?.name}</div>
+            <div style={{ fontSize: 10, opacity: 0.85 }}>{w.sender?.address}</div>
+          </div>
+        </div>
+        <div style={{ textAlign:'right' }}>
+          <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: 3 }}>TAX INVOICE</div>
+          <div style={{ fontSize: 11, opacity: 0.9 }}>#{w.details?.invoiceNumber} · {w.details?.invoiceDate}</div>
+        </div>
+      </div>
+      <div style={{ padding: '24px 30px' }}>
+        <div style={{ display:'flex', gap: 24, marginBottom: 20 }}>
+          <div style={{ flex: 1, fontSize: 11 }}>
+            <div style={{ fontWeight: 800, fontSize: 10, color:'#666', letterSpacing: 1, marginBottom: 4 }}>BILL TO</div>
+            <div style={{ fontWeight: 700, fontSize: 13 }}>{w.receiver?.name}</div>
+            <div style={{ color:'#555', lineHeight: 1.6 }}>{w.receiver?.address}<br/>{w.receiver?.email}</div>
+          </div>
+          <div style={{ fontSize: 11, textAlign:'right', color:'#555', lineHeight: 1.8 }}>
+            {w.details?.dueDate && <div><b>Due Date:</b> {w.details.dueDate}</div>}
+            {w.sender?.phone && <div><b>Ph:</b> {w.sender.phone}</div>}
+          </div>
+        </div>
+        <table style={{ width:'100%', borderCollapse:'collapse', fontSize: 11 }}>
+          <thead><tr style={{ background: theme.light, borderBottom: `1.5px solid ${theme.accent}` }}>
+            <th style={{ textAlign:'left', padding: 7 }}>#</th>
+            <th style={{ textAlign:'left', padding: 7 }}>Description</th>
+            <th style={{ textAlign:'right', padding: 7 }}>Qty</th>
+            <th style={{ textAlign:'right', padding: 7 }}>Rate</th>
+            <th style={{ textAlign:'right', padding: 7 }}>Tax%</th>
+            <th style={{ textAlign:'right', padding: 7 }}>Amount</th>
+          </tr></thead>
+          <tbody>
+            {(w.items || []).map((it: any, i: number) => (
+              <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
+                <td style={{ padding: 7, color:'#999' }}>{i + 1}</td>
+                <td style={{ padding: 7 }}>{it.description || '—'}</td>
+                <td style={{ padding: 7, textAlign:'right' }}>{it.quantity}</td>
+                <td style={{ padding: 7, textAlign:'right' }}>{currency.symbol}{Number(it.rate).toFixed(2)}</td>
+                <td style={{ padding: 7, textAlign:'right', color:'#666' }}>{it.taxRate ?? 0}%</td>
+                <td style={{ padding: 7, textAlign:'right', fontWeight: 600 }}>{currency.symbol}{(Number(it.quantity)*Number(it.rate)).toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div style={{ display:'flex', justifyContent:'space-between', marginTop: 20, gap: 24, alignItems:'flex-start' }}>
+          <div style={{ flex: 1, fontSize: 10, color:'#555' }}>
+            {taxAmt > 0 && <table style={{ borderCollapse:'collapse', width:'100%', maxWidth: 260, fontSize: 10 }}>
+              <thead><tr style={{ borderBottom:'1px solid #ddd' }}><th style={{ textAlign:'left', padding: 4 }}>Tax Split</th><th style={{ textAlign:'right', padding: 4 }}>Amount</th></tr></thead>
+              <tbody>
+                <tr><td style={{ padding: 4 }}>CGST @ {(Number(w.details?.tax || 0)/2).toFixed(1)}%</td><td style={{ padding: 4, textAlign:'right' }}>{currency.symbol}{(taxAmt/2).toFixed(2)}</td></tr>
+                <tr><td style={{ padding: 4 }}>SGST @ {(Number(w.details?.tax || 0)/2).toFixed(1)}%</td><td style={{ padding: 4, textAlign:'right' }}>{currency.symbol}{(taxAmt/2).toFixed(2)}</td></tr>
+              </tbody>
+            </table>}
+            <div style={{ marginTop: 10, fontStyle:'italic' }}>
+              <b>In words:</b> {amountToWords(total, w.details?.currency || 'INR')}
+            </div>
+          </div>
+          <div style={{ minWidth: 220 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', fontSize: 12 }}><span>Subtotal</span><span>{currency.symbol}{itemsTotal.toFixed(2)}</span></div>
+            {discountAmt > 0 && <div style={{ display:'flex', justifyContent:'space-between', fontSize: 12, color:'#10b981' }}><span>Discount</span><span>-{currency.symbol}{discountAmt.toFixed(2)}</span></div>}
+            {taxAmt > 0 && <div style={{ display:'flex', justifyContent:'space-between', fontSize: 12 }}><span>Tax</span><span>+{currency.symbol}{taxAmt.toFixed(2)}</span></div>}
+            {shippingAmt > 0 && <div style={{ display:'flex', justifyContent:'space-between', fontSize: 12 }}><span>Shipping</span><span>+{currency.symbol}{shippingAmt.toFixed(2)}</span></div>}
+            <div style={{ display:'flex', justifyContent:'space-between', fontSize: 15, fontWeight: 900, marginTop: 6, background: theme.from, color:'#fff', padding:'6px 10px', borderRadius: 6 }}>
+              <span>GRAND TOTAL</span><span>{currency.symbol}{total.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+        {w.details?.upiId && <div style={{ fontSize: 10, marginTop: 14, color:'#555' }}>UPI: <b>{w.details.upiId}</b></div>}
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginTop: 20 }}>
+          <div style={{ fontSize: 9, color:'#888', maxWidth: 320 }}>{w.details?.terms}</div>
+          {sigPreview && <div style={{ textAlign:'center' }}><img src={sigPreview} style={{ height: 40, objectFit:'contain' }} /><div style={{ fontSize: 9, color:'#888', borderTop:'1px solid #ccc', paddingTop: 2 }}>Authorised Signatory</div></div>}
+        </div>
+      </div>
     </div>
   )
 
