@@ -8,6 +8,25 @@ Inspired by [Invoify](https://github.com/al1abb/invoify) and other top invoice g
 
 ---
 
+## 📸 Screenshots
+
+### Dashboard
+![Dashboard](screenshots/dashboard.png)
+
+### Point of Sale + Products + Settings
+![Products](screenshots/products.png)
+
+![Settings](screenshots/settings.png)
+
+### Secure Login (PIN Lock) & Onboarding Wizard
+![Login](screenshots/login.png)
+
+![Onboarding](screenshots/onboarding.png)
+
+> 🧾 Invoice generator & POS screenshots: run `npm run dev` and open `/invoices/new` and `/pos` — 8 premium templates (Classic, Modern, Minimal, Bold, Sidebar, Elegant, GST Pro with tax-split + amount-in-words, Thermal) await.
+
+---
+
 ## ⚡ Quick Start
 
 ```bash
